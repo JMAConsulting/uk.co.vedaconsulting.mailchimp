@@ -107,7 +107,7 @@ class CRM_Mailchimp_Sync {
 
     // Cheekily access the database directly to obtain a prepared statement.
     $db = $dao->getDatabaseConnection();
-    $insert = $db->prepare('INSERT INTO tmp_mailchimp_push_m
+    $insert = $db->prepare('INSERT IGNORE INTO tmp_mailchimp_push_m
              (email, first_name, last_name, hash, interests)
       VALUES (?,     ?,          ?,         ?,    ?)');
 
