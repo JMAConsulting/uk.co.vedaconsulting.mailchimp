@@ -310,13 +310,27 @@ class CRM_Mailchimp_Form_Sync extends CRM_Core_Form {
     $sync->dry_run = $dry_run;
     // this generates updates and unsubscribes
     $stats[$listID] = $sync->updateMailchimpFromCivi();
+    $totalCount = $stats[$listID]['totalCount'];
+    unset($stats[$listID]['totalCount']);
     // Finally, finish up by removing the two temporary tables
     //CRM_Mailchimp_Sync::dropTemporaryTables();
     static::updatePushStats($stats);
-
+    for ($i = 1; $i <= $totalCount; $i++) {
+      $ctx->queue->createItem( new CRM_Queue_Task(
+        array('CRM_Mailchimp_Form_Sync', 'pushContactsToMailchimp'),
+        array($listID, $i),
+        "Update Mailchimp"
+      ));
+    }
+    unset($totalCount);
     return CRM_Queue_Task::TASK_SUCCESS;
   }
 
+public static function pushContactsToMailchimp(CRM_Queue_TaskContext $ctx, $listID, $batchId) {
+    $sync = new CRM_Mailchimp_Sync($listID);
+    $sync->sendContactsToMailChimp($batchId);
+    return CRM_Queue_Task::TASK_SUCCESS;
+  }
   /**
    * Update the push stats setting.
    */

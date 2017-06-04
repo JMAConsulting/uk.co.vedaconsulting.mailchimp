@@ -523,6 +523,7 @@ class CRM_Mailchimp_Sync {
 
     return $count + $doubles;
   }
+
   /**
    * "Push" sync.
    *
@@ -616,7 +617,7 @@ class CRM_Mailchimp_Sync {
         $operations[] = ['PATCH', $url_prefix . md5(strtolower($email)), ['status' => 'unsubscribed']];
       }
     }
-
+    $totalCount = 0;
     if (!$this->dry_run && !empty($operations)) {
       // Don't print_r all operations in the debug, because deserializing
       // allocates way too much memory if you have thousands of operations.
@@ -624,13 +625,26 @@ class CRM_Mailchimp_Sync {
       // avoid memory limit problems.
       $batches = array_chunk($operations, MAILCHIMP_MAX_REQUEST_BATCH_SIZE, TRUE);
       foreach ($batches as &$batch) {
-        CRM_Mailchimp_Utils::checkDebug("Batching " . count($batch) . " operations. ");
-        $api->batchAndWait($batch);
+        $totalCount++;
+        $name = "mailchimp_push_{$this->list_id}_{$totalCount}";
+        Civi::settings()->set($name, $batch);
       }
       unset($batch);
     }
 
-    return ['additions' => $additions, 'updates' => $changes, 'unsubscribes' => $unsubscribes];
+    return ['additions' => $additions, 'updates' => $changes, 'unsubscribes' => $unsubscribes, 'totalCount' => $totalCount];
+  }
+
+  function sendContactsToMailChimp($batchId) {
+    $api = CRM_Mailchimp_Utils::getMailchimpApi();
+    $name = "mailchimp_push_{$this->list_id}_{$batchId}";
+    $batch = Civi::settings()->get($name);
+    if ($batch) {
+      CRM_Mailchimp_Utils::checkDebug("Batching " . count($batch) . " operations. ");
+      $api->batchAndWait($batch);
+      unset($batch);
+    }
+    CRM_Core_DAO::executeQuery("DELETE FROM civicrm_setting WHERE name = '{$name}'");
   }
 
   /**
