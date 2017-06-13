@@ -98,7 +98,20 @@ function civicrm_api3_mailchimp_pushsync($params) {
   }
 
   if ($result['is_error'] == 0) {
-    return civicrm_api3_create_success();
+    $stats = CRM_Mailchimp_Utils::getSettingValue('push_stats');
+    $groups = CRM_Mailchimp_Utils::getGroupsToSync(array(), NULL, TRUE);
+    $output_stats = array();
+    foreach ($groups as $group_id => $details) {
+      if (empty($details['list_name'])) {
+        continue;
+      }
+      $list_stats = $stats[$details['list_id']];
+      $output_stats[] = array(
+        'name' => $details['civigroup_title'],
+        'stats' => $list_stats,
+      );
+    }
+    return civicrm_api3_create_success($output_stats);
   }
   else {
     if (isset($result['exception']) && $result['exception'] instanceof Exception) {
