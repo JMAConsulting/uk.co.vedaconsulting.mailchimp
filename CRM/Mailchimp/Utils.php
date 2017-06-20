@@ -387,7 +387,7 @@ class CRM_Mailchimp_Utils {
     }
 
     $whereClause .= " AND mc_list_id IS NOT NULL AND mc_list_id <> ''";
-
+    $listInterests = self::getlistInterests($mc_list_id);
     if ($mc_list_id) {
       // just want results for a particular MC list.
       $whereClause .= " AND mc_list_id = %1 ";
@@ -397,7 +397,6 @@ class CRM_Mailchimp_Utils {
     if ($membership_only) {
       $whereClause .= " AND (mc_grouping_id IS NULL OR mc_grouping_id = '')";
     }
-
     $query  = "
       SELECT  entity_id, mc_list_id, mc_grouping_id, mc_group_id, is_mc_update_grouping, cg.title as civigroup_title, cg.saved_search_id, cg.children
  FROM    civicrm_value_mailchimp_settings mcs
@@ -405,6 +404,15 @@ class CRM_Mailchimp_Utils {
       WHERE $whereClause";
     $dao = CRM_Core_DAO::executeQuery($query, $params);
     while ($dao->fetch()) {
+      if ($listInterests) {
+        if ($dao->mc_grouping_id) {
+          if (!array_key_exists($dao->mc_grouping_id, $listInterests)
+	    || !in_array($dao->mc_group_id, $listInterests[$dao->mc_grouping_id])
+	  ) {
+            continue;
+          }
+        }
+      }
       $list_name = CRM_Mailchimp_Utils::getMCListName($dao->mc_list_id);
       $interest_name = CRM_Mailchimp_Utils::getMCInterestName($dao->mc_list_id, $dao->mc_grouping_id, $dao->mc_group_id);
       $category_name = CRM_Mailchimp_Utils::getMCCategoryName($dao->mc_list_id, $dao->mc_grouping_id);
@@ -646,6 +654,23 @@ class CRM_Mailchimp_Utils {
     catch (CiviCRM_API3_Exception $e) {
       return NULL;
     }
+  }
+
+  public static function getlistInterests($listId) {
+    if (!$listId) {
+      return NULL;
+    }
+    $results = civicrm_api3('Mailchimp', 'getinterests', array(
+      'id' => $listId,
+    ));
+    $listInterests = array();
+    foreach ($results['values'] as $cid => $values) {
+      $listInterests[$cid] = array();
+      foreach ($values['interests'] as $id => $lists) {
+        $listInterests[$cid][] = $id;
+      }
+    }
+    return $listInterests;
   }
 
 }
