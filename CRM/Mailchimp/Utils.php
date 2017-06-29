@@ -674,11 +674,14 @@ class CRM_Mailchimp_Utils {
   }
 
   public static function emailAdmins($params) {
+    if (empty($params['sendEmailToGroupId'])) {
+      return NULL;
+    }
     $groups = CRM_Mailchimp_Utils::getGroupsToSync(array(), null, $membership_only = TRUE);
     $invalidGroups = array();
     foreach ($groups as $group_id => $details) {
       if (empty($details['list_name'])) {
-        $url = CRM_Utils_System::url('civicrm/group', "reset=1&action=update&id=$group_id");
+        $url = CRM_Utils_System::url('civicrm/group', "reset=1&action=update&id=$group_id", TRUE);
         $invalidGroups[] = "<a href='{$url}'>"
           . "CiviCRM group $group_id: "
           . htmlspecialchars($details['civigroup_title']) . "</a>";
@@ -687,10 +690,20 @@ class CRM_Mailchimp_Utils {
     if ($invalidGroups) {
       // email Admins list of in valid emails
       CRM_Core_Smarty::singleton()->assign('invalidGroups', $invalidGroups);
+      $groupId = $params['sendEmailToGroupId'];
+      $result = civicrm_api3('Contact', 'get', array(
+        'return' => array("email"),
+        'group' => $groupId,
+      ));
+      $toEmails = array();
+      foreach ($result['values'] as $emails) {
+        $toEmails[] = $emails['email'];
+      }
+      if (empty($toEmails)) return NULL;
       $sendTemplateParams = array(
         'messageTemplateID' =>  92,
         'from' => "CiviCRM Cron<cron@brennancenter.org>",
-        'toEmail' => 'pradeep.nayak@jmaconsulting.biz',
+        'toEmail' => implode(',', $toEmails),
       );
       CRM_Core_BAO_MessageTemplate::sendTemplate($sendTemplateParams);
     }
