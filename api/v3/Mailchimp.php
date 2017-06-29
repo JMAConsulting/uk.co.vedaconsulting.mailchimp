@@ -99,6 +99,7 @@ ini_set('memory_limit', '1024M');
   }
 
   if ($result['is_error'] == 0) {
+    CRM_Mailchimp_Utils::emailAdmins($params);
     $stats = CRM_Mailchimp_Utils::getSettingValue('push_stats');
     $groups = CRM_Mailchimp_Utils::getGroupsToSync(array(), NULL, TRUE);
     $output_stats = array();

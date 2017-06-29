@@ -673,4 +673,25 @@ class CRM_Mailchimp_Utils {
     return $listInterests;
   }
 
+  public static function emailAdmins($params) {
+    $groups = CRM_Mailchimp_Utils::getGroupsToSync(array(), null, $membership_only = TRUE);
+    $invalidGroups = array();
+    foreach ($groups as $group_id => $details) {
+      if (empty($details['list_name'])) {
+        $invalidGroups[] = "<a href='/civicrm/group?reset=1&action=update&id=$group_id' >"
+          . "CiviCRM group $group_id: "
+          . htmlspecialchars($details['civigroup_title']) . "</a>";
+      }
+      if ($invalidGroups) {
+        // email Admins list of in valid emails
+	CRM_Core_Smarty::singleton()->assign('invalidGroups', $invalidGroups);
+	$sendTemplateParams = array(
+          'messageTemplateID' =>  92,
+          'from' => "CiviCRM Cron<cron@brennancenter.org>",
+          'toEmail' => 'pradeep.nayak@jmaconsulting.biz',
+        );
+      	CRM_Core_BAO_MessageTemplate::sendTemplate($sendTemplateParams);
+      }
+    }
+  }
 }
