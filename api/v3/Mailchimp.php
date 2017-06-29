@@ -91,7 +91,8 @@ function civicrm_api3_mailchimp_getinterests($params) {
  * @throws API_Exception
  */ 
 function civicrm_api3_mailchimp_pushsync($params) {
-ini_set('memory_limit', '1024M');
+  ini_set('memory_limit', '1024M');
+  CRM_Mailchimp_Utils::emailAdmins($params);
   // Do push from CiviCRM to mailchimp
   $runner = CRM_Mailchimp_Form_Sync::getRunner($skipEndUrl = TRUE);
   if ($runner) {
@@ -99,7 +100,6 @@ ini_set('memory_limit', '1024M');
   }
 
   if ($result['is_error'] == 0) {
-    CRM_Mailchimp_Utils::emailAdmins($params);
     $stats = CRM_Mailchimp_Utils::getSettingValue('push_stats');
     $groups = CRM_Mailchimp_Utils::getGroupsToSync(array(), NULL, TRUE);
     $output_stats = array();
