@@ -678,20 +678,22 @@ class CRM_Mailchimp_Utils {
     $invalidGroups = array();
     foreach ($groups as $group_id => $details) {
       if (empty($details['list_name'])) {
-        $invalidGroups[] = "<a href='/civicrm/group?reset=1&action=update&id=$group_id' >"
+        $url = CRM_Utils_System::url('civicrm/group', "reset=1&action=update&id=$group_id");
+        $invalidGroups[] = "<a href='{$url}'>"
           . "CiviCRM group $group_id: "
           . htmlspecialchars($details['civigroup_title']) . "</a>";
       }
-      if ($invalidGroups) {
-        // email Admins list of in valid emails
-	CRM_Core_Smarty::singleton()->assign('invalidGroups', $invalidGroups);
-	$sendTemplateParams = array(
-          'messageTemplateID' =>  92,
-          'from' => "CiviCRM Cron<cron@brennancenter.org>",
-          'toEmail' => 'pradeep.nayak@jmaconsulting.biz',
-        );
-      	CRM_Core_BAO_MessageTemplate::sendTemplate($sendTemplateParams);
-      }
+    }
+    if ($invalidGroups) {
+      // email Admins list of in valid emails
+      CRM_Core_Smarty::singleton()->assign('invalidGroups', $invalidGroups);
+      $sendTemplateParams = array(
+        'messageTemplateID' =>  92,
+        'from' => "CiviCRM Cron<cron@brennancenter.org>",
+        'toEmail' => 'pradeep.nayak@jmaconsulting.biz',
+      );
+      CRM_Core_BAO_MessageTemplate::sendTemplate($sendTemplateParams);
     }
   }
+
 }
