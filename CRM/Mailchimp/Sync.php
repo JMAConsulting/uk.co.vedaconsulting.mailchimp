@@ -627,7 +627,7 @@ class CRM_Mailchimp_Sync {
       foreach ($batches as &$batch) {
         CRM_Mailchimp_Utils::checkDebug("Batching " . count($batch) . " operations. ");
         $response = $api->batchAndWait($batch);
-	self::getErrorCount($response, $notAdded);
+	self::getErrorCount($notAdded, $response);
       }
       unset($batch);
     }
