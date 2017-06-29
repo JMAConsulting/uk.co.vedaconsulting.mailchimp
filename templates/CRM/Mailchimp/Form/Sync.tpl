@@ -13,6 +13,9 @@
       <tr><td>{ts}Contacts that were in sync already{/ts}:</td><td>{$group.stats.in_sync}</td></tr>
       <tr><td>{ts}Contacts updated at Mailchimp{/ts}:</td><td>{$group.stats.updates}</td></tr>
       <tr><td>{ts}Contacts Subscribed{/ts}:</td><td>{$group.stats.additions}</td></tr>
+      {if $group.stats.notAdded}
+      <tr><td>{ts}Contacts Not Added(Error from Mailchimp){/ts}:</td><td>{$group.stats.notAdded}</td></tr>
+      {/if}
       <tr><td>{ts}Contacts Unsubscribed from Mailchimp{/ts}:</td><td>{$group.stats.unsubscribes}</td></tr>
       </table>
       {/foreach}

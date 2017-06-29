@@ -182,6 +182,7 @@ class CRM_Mailchimp_Api3 {
     }
     else {
       // Submit the requests one after another.
+      $result = array();
       foreach ($batch as $item) {
         $method = strtolower($item[0]);
         $path = $item[1];
@@ -193,8 +194,10 @@ class CRM_Mailchimp_Api3 {
           // Here we ignore exceptions from Mailchimp not because we want to,
           // but because we have no way of handling such errors when done for
           // 15+ items in a proper batch, so we don't handle them here either.
+	  $result['multiple'][] = $e->response;
         }
       }
+      return $result;
     }
   }
   /**

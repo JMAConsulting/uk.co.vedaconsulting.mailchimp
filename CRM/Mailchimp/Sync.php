@@ -617,6 +617,7 @@ class CRM_Mailchimp_Sync {
       }
     }
 
+    $notAdded = 0;
     if (!$this->dry_run && !empty($operations)) {
       // Don't print_r all operations in the debug, because deserializing
       // allocates way too much memory if you have thousands of operations.
@@ -625,12 +626,26 @@ class CRM_Mailchimp_Sync {
       $batches = array_chunk($operations, MAILCHIMP_MAX_REQUEST_BATCH_SIZE, TRUE);
       foreach ($batches as &$batch) {
         CRM_Mailchimp_Utils::checkDebug("Batching " . count($batch) . " operations. ");
-        $api->batchAndWait($batch);
+        $response = $api->batchAndWait($batch);
+	self::getErrorCount($response, $notAdded);
       }
       unset($batch);
     }
 
-    return ['additions' => $additions, 'updates' => $changes, 'unsubscribes' => $unsubscribes];
+    return ['additions' => ($additions - $notAdded), 'updates' => $changes, 'unsubscribes' => $unsubscribes, 'notAdded' => $notAdded];
+  }
+
+  public static function getErrorCount(&$notAdded, $response) {
+    if (empty($response)) return;
+    if (array_key_exists('multiple', $response)) {
+      $notAdded += count($response['multiple']);
+    }
+    else {
+      $data = $response->data;
+      if ($data->errored_operations) {
+        $notAdded += $data->errored_operations;
+      }
+    }
   }
 
   /**
