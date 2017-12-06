@@ -122,6 +122,27 @@ class CRM_Mailchimp_Utils {
     }
     return $groups;
   }
+
+  /**
+   * Convert array GROUPINGS given by mailchimp and convert it into an array of groupIds.
+   *
+   * @param string $group_input As output by the Mailchimp api v3.
+   * @param array $group_details_by_category As from CRM_Mailchimp_Utils::getGroupsToSync but grouped
+   * but only including groups you're interested in and grouped by category.
+   * @return array CiviCRM groupIds.
+   */
+  public static function convertMailchimpWebhookGroupsToCiviGroupIds($group_input, $group_details_by_category) {
+    // Mailchimp API v3 -> groups are in an array now
+    $groups = [];
+
+    // search on every mailchimp list for groups that could correspond in civicrm
+    foreach ($group_input as $mclist) {
+      $ng = self::splitGroupTitlesFromMailchimp($mclist['groups'], $group_details_by_category[$mclist['unique_id']]);
+      $groups = array_merge($groups, $ng);
+    }
+    return $groups;
+  }
+
   /**
    * Returns the webhook URL.
    */
@@ -397,6 +418,7 @@ class CRM_Mailchimp_Utils {
     if ($membership_only) {
       $whereClause .= " AND (mc_grouping_id IS NULL OR mc_grouping_id = '')";
     }
+
     $query  = "
       SELECT  entity_id, mc_list_id, mc_grouping_id, mc_group_id, is_mc_update_grouping, cg.title as civigroup_title, cg.saved_search_id, cg.children
  FROM    civicrm_value_mailchimp_settings mcs
@@ -654,6 +676,18 @@ class CRM_Mailchimp_Utils {
     catch (CiviCRM_API3_Exception $e) {
       return NULL;
     }
+  }
+
+  /**
+   * To Generate random webhook key 
+   */
+  public static function generateWebhookKey() {
+    $randomWebhookKey = md5(uniqid(rand(), true));
+    if ($_POST['ajaxurl'] == 1) {
+      echo $randomWebhookKey;
+      CRM_Utils_System::civiExit();
+    }
+    return $randomWebhookKey;
   }
 
   public static function getlistInterests($listId) {

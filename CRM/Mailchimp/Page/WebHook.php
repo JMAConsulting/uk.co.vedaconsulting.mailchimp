@@ -431,7 +431,7 @@ class CRM_Mailchimp_Page_WebHook extends CRM_Core_Page {
   public function updateInterestsFromMerges() {
 
     // Get a list of CiviCRM group Ids that this contact should be in.
-    $should_be_in = $this->sync->splitMailchimpWebhookGroupsToCiviGroupIds($this->request_data['merges']['INTERESTS']);
+    $should_be_in = $this->sync->convertMailchimpWebhookGroupsToCiviGroupIds($this->request_data['merges']['GROUPINGS']);
 
     // Now get a list of all the groups they *are* in.
     $result = civicrm_api3('Contact', 'getsingle', ['return' => 'group', 'contact_id' => $this->contact_id]);
