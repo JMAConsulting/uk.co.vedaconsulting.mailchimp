@@ -740,22 +740,27 @@ class CRM_Mailchimp_Sync {
 
     // Now consider deletions of those not in membership group at CiviCRM but
     // there at Mailchimp.
-    $removals = $this->getEmailsNotInCiviButInMailchimp();
-    $unsubscribes = count($removals);
-    if ($this->dry_run) {
-      // Just log.
-      if ($unsubscribes) {
-        CRM_Mailchimp_Utils::checkDebug("Would unsubscribe " . count($unsubscribes) . " Mailchimp members: " . implode(', ', $removals));
+    if (!Civi::settings()->get('mailchimp_disable_removal')) {
+      $removals = $this->getEmailsNotInCiviButInMailchimp();
+      $unsubscribes = count($removals);
+      if ($this->dry_run) {
+        // Just log.
+        if ($unsubscribes) {
+          CRM_Mailchimp_Utils::checkDebug("Would unsubscribe " . count($unsubscribes) . " Mailchimp members: " . implode(', ', $removals));
+        }
+        else {
+          CRM_Mailchimp_Utils::checkDebug("No Mailchimp members would be unsubscribed.");
+        }
       }
       else {
-        CRM_Mailchimp_Utils::checkDebug("No Mailchimp members would be unsubscribed.");
+        // For real, not dry run.
+        foreach ($removals as $email) {
+          $operations[] = ['PATCH', $url_prefix . md5(strtolower($email)), ['status' => 'unsubscribed']];
+        }
       }
     }
     else {
-      // For real, not dry run.
-      foreach ($removals as $email) {
-        $operations[] = ['PATCH', $url_prefix . md5(strtolower($email)), ['status' => 'unsubscribed']];
-      }
+      $unsubscribes = 0;
     }
 
     if (!$this->dry_run && !empty($operations)) {
@@ -985,13 +990,15 @@ class CRM_Mailchimp_Sync {
       ");
     // Collect the contact_ids that need removing from the membership group.
     while ($dao->fetch()) {
-      if (!$this->dry_run) {
-        $changes['removals'][$this->membership_group_id][] =$dao->contact_id;
+      if (!Civi::settings()->get('mailchimp_disable_removal')) {
+        if (!$this->dry_run) {
+          $changes['removals'][$this->membership_group_id][] =$dao->contact_id;
+        }
+        else {
+          CRM_Mailchimp_Utils::checkDebug("Would remove CiviCRM contact $dao->contact_id from membership group - no longer subscribed at Mailchimp.");
+        }
+        $stats['removed']++;
       }
-      else {
-        CRM_Mailchimp_Utils::checkDebug("Would remove CiviCRM contact $dao->contact_id from membership group - no longer subscribed at Mailchimp.");
-      }
-      $stats['removed']++;
     }
 
     if (!$this->dry_run) {
@@ -1006,7 +1013,7 @@ class CRM_Mailchimp_Sync {
         }
       }
 
-      if ($changes['removals']) {
+      if ($changes['removals'] && !Civi::settings()->get('mailchimp_disable_removal')) {
         // We have some contacts to add into groups...
         foreach($changes['removals'] as $groupID => $contactIDs) {
           CRM_Contact_BAO_GroupContact::removeContactsFromGroup($contactIDs, $groupID, 'Admin', 'Removed');
@@ -1169,27 +1176,29 @@ return;
     $api = CRM_Mailchimp_Utils::getMailchimpApi();
 
     if (!$currently_a_member) {
-      // They are not currently a member.
-      //
-      // We should ensure they are unsubscribed from Mailchimp. They might
-      // already be, but as we have no way of telling exactly what just changed
-      // at our end, we have to make sure.
-      //
-      // Nb. we don't bother updating their interests for unsubscribes.
-      try {
-        $result = $api->patch("/lists/$this->list_id/members/$subscriber_hash",
-          ['status' => 'unsubscribed']);
-      }
-      catch (CRM_Mailchimp_RequestErrorException $e) {
-        if ($e->response->http_code == 404) {
-          // OK. Mailchimp didn't know about them anyway. Fine.
+      if (!Civi::settings()->get('mailchimp_disable_removal')) {
+        // They are not currently a member.
+        //
+        // We should ensure they are unsubscribed from Mailchimp. They might
+        // already be, but as we have no way of telling exactly what just changed
+        // at our end, we have to make sure.
+        //
+        // Nb. we don't bother updating their interests for unsubscribes.
+        try {
+          $result = $api->patch("/lists/$this->list_id/members/$subscriber_hash",
+            ['status' => 'unsubscribed']);
         }
-        else {
-          CRM_Core_Session::setStatus(ts('There was a problem trying to unsubscribe this contact at Mailchimp; any differences will remain until a CiviCRM to Mailchimp Sync is done.'));
+        catch (CRM_Mailchimp_RequestErrorException $e) {
+          if ($e->response->http_code == 404) {
+            // OK. Mailchimp didn't know about them anyway. Fine.
+          }
+          else {
+            CRM_Core_Session::setStatus(ts('There was a problem trying to unsubscribe this contact at Mailchimp; any differences will remain until a CiviCRM to Mailchimp Sync is done.'));
+          }
         }
-      }
-      catch (CRM_Mailchimp_NetworkErrorException $e) {
-        CRM_Core_Session::setStatus(ts('There was a network problem trying to unsubscribe this contact at Mailchimp; any differences will remain until a CiviCRM to Mailchimp Sync is done.'));
+        catch (CRM_Mailchimp_NetworkErrorException $e) {
+          CRM_Core_Session::setStatus(ts('There was a network problem trying to unsubscribe this contact at Mailchimp; any differences will remain until a CiviCRM to Mailchimp Sync is done.'));
+        }
       }
       return;
     }

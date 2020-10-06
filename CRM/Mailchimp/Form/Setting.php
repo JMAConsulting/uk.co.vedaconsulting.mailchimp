@@ -1,5 +1,7 @@
 <?php
 
+use CRM_Mailchimp_ExtensionUtil as E;
+
 class CRM_Mailchimp_Form_Setting extends CRM_Core_Form {
 
    /**
@@ -40,28 +42,29 @@ class CRM_Mailchimp_Form_Setting extends CRM_Core_Form {
     $this->assign( 'webhook_url', 'Webhook URL - '.$webhook_url);
 
     // Add the API Key Element
-    $this->add('text', 'mailchimp_api_key', ts('API Key'), array(
+    $this->add('text', 'mailchimp_api_key', E::ts('API Key'), array(
       'size' => 48,
     ), TRUE);    
 
     // Add the User Security Key Element    
-    $this->add('text', 'mailchimp_security_key', ts('Security Key'), array(
+    $this->add('text', 'mailchimp_security_key', E::ts('Security Key'), array(
       'size' => 24,
     ), TRUE);
 
     // Add Enable or Disable Debugging
-    $enableOptions = array(1 => ts('Yes'), 0 => ts('No'));
-    $this->addRadio('mailchimp_enable_debugging', ts('Enable Debugging'), $enableOptions, NULL);
+    $enableOptions = array(1 => E::ts('Yes'), 0 => E::ts('No'));
+    $this->addRadio('mailchimp_enable_debugging', E::ts('Enable Debugging'), $enableOptions, NULL);
+    $this->addRadio('mailchimp_disable_removal', E::ts('Disable removal from groups and lists'), $enableOptions, NULL);
 
     // Create the Submit Button.
     $buttons = array(
       array(
         'type' => 'submit',
-        'name' => ts('Save & Test'),
+        'name' => E::ts('Save & Test'),
       ),
       array(
         'type' => 'cancel',
-        'name' => ts('Cancel'),
+        'name' => E::ts('Cancel'),
       ),      
     );
 
@@ -97,6 +100,7 @@ class CRM_Mailchimp_Form_Setting extends CRM_Core_Form {
     $defaults['mailchimp_api_key'] = $apiKey;
     $defaults['mailchimp_security_key'] = $securityKey;
     $defaults['mailchimp_enable_debugging'] = $enableDebugging;
+    $defaults['mailchimp_disable_removal'] = Civi::settings()->get('mailchimp_disable_removal');
 
     return $defaults;
   }
@@ -116,7 +120,7 @@ class CRM_Mailchimp_Form_Setting extends CRM_Core_Form {
     if (CRM_Utils_Array::value('mailchimp_api_key', $params) || CRM_Utils_Array::value('mailchimp_security_key', $params)) {
 
 
-      foreach (['mailchimp_api_key', 'mailchimp_enable_debugging', 'mailchimp_security_key'] as $_) {
+      foreach (['mailchimp_api_key', 'mailchimp_enable_debugging', 'mailchimp_security_key', 'mailchimp_disable_removal'] as $_) {
         Civi::settings()->set($_, $params[$_]);
       }
 
@@ -142,7 +146,7 @@ class CRM_Mailchimp_Form_Setting extends CRM_Core_Form {
 
       // Check CMS's permission for (presumably) anonymous users.
       if (!self::checkMailchimpPermission($params['mailchimp_security_key'])) {
-        CRM_Core_Session::setStatus(ts("Mailchimp WebHook URL requires 'allow webhook posts' permission to be set for any user roles."));
+        CRM_Core_Session::setStatus(E::ts("Mailchimp WebHook URL requires 'allow webhook posts' permission to be set for any user roles."));
       }      
     }
   }
